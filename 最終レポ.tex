@@ -1,0 +1,392 @@
+\documentclass[12pt,uplatex,dvipdfmx,titlepage]{article}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{mathtools}
+% \usepackage[top=2.5cm, bottom=2.5cm]{geometry}
+\usepackage[dvipdfmx]{graphicx,hyperref}
+\usepackage{here}
+\usepackage{enumerate}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{colortbl}
+\usepackage{color}
+\usepackage{listings}
+\usepackage{tikz}
+\usetikzlibrary{arrows}
+\usetikzlibrary{shapes.geometric}
+\usetikzlibrary{positioning}
+
+\newtheoremstyle{case}{}{}{}{}{}{:}{ }{}
+\theoremstyle{case}
+\newtheorem{case}{Case}
+\usetikzlibrary{intersections, calc, arrows}
+
+\lstdefinestyle{mystyle}{
+keywordstyle=\color{magenta},
+backgroundcolor=\color{yellow},
+commentstyle=\color{green},
+basicstyle=\footnotesize,
+}
+\lstset{style=mystyle}
+
+\algtext*{EndWhile}
+\algtext*{EndIf}
+\algtext*{EndFor}
+\algtext*{EndLoop}
+
+\title
+{
+    \begin{Large}
+        「システム論」
+    \end{Large}
+    \begin{large}
+        S1ターム 火2・金2時限　\\教員: 福永アレックス\\
+    \end{large}
+    \vspace{15pt}
+    \begin{Large}
+        最終レポート課題\\
+    \end{Large}
+    \vspace{20pt}
+    \begin{Huge}
+    Steiner tree problem in graph theory
+    \end{Huge}
+    \vspace{100pt}
+}
+
+\author{J4-190507 理科一類19組2年 木下裕太}
+
+\begin{document}
+    \maketitle
+
+    本レポートではグラフ $G$ に対しその頂点集合を $V(G)$、辺集合を $E(G)$ と表記し、特に断りのない限りは単純グラフ\footnote{multiple edge や self loop を持たないグラフのこと。}のみを扱うものとする(本質的に非単純である必要がないため)。
+    考えているグラフが明らかなときはこれらを省略して単に $V,E$ と表記する。また以下の議論でしばしば使う性質として、グラフ $T$ が Tree (木)\footnote{cycle をもたない無向グラフのこと。}ならば $V(T)=E(T)+1$ が成り立つというものがある。
+
+    \section{Steiner tree problem}
+    Steiner tree problem (シュタイナー木問題)は発案した数学者 Jakob Steiner に由来して名付けられた、組合せ最適化の分野におけるある種の問題群の総称である。
+    % 19世紀前半には知られていたはずだが、この問題が真剣に取り組まれるようになったのはそれから約100年後に出された論文以降のことであるようだ。
+
+    \subsection{Statement}
+    上で説明したように Steiner tree problem と呼ばれる問題にはいくつかの設定が存在する。
+    ここでは本レポートで主に考察の対象とする、グラフ理論における1つの version について判定問題として定式化したものを述べる。
+    \begin{quote}
+        INSTANCE:
+        \begin{quote}
+            \begin{itemize}
+                \item unweighted な無向グラフ $G$
+                \item 頂点の部分集合 $S\subseteq V$
+                \item 正の整数 $k$
+            \end{itemize}
+        \end{quote}
+
+        QUESTION:
+        \begin{quote}
+            $G$ の部分木 $T\subseteq G$ であって次の2つを満たすものが存在するか判定せよ。
+            \begin{itemize}
+                \item $S\subseteq V(T)$
+                \item $|E(T)|=|V(T)|-1\le k$
+            \end{itemize}
+        \end{quote}
+    \end{quote}
+    QUESTION の1つ目の条件を満たす部分木 $T$ を ($G$ における) $S$ を張る Steiner tree という。
+    この判定問題と等価な最適化問題として、"$S$ を張る Steiner tree であって頂点数最小のもの(Steiner minimum tree)を求める" と言い換えた形でも知られている。
+    なお特に $S=V(G)$ の場合は Steiner tree は Spanning tree (全域木)と同義になり、グラフが連結であるかの判定は $O(|V|^2)$ などで比較的高速に行える。
+    また $|S|=2$ の場合は Shortest path problem と等価で、こちらも幅優先探索などのアルゴリズムにより Linear time $O(|V|)$ で解を得ることが可能である。
+
+    \subsection{Variations}
+    本来 Steiner tree problem という呼称は次の問題を指して使われていたようである。
+    \begin{quote}
+        平面上に $n$ 個の点が与えられる。それら全てが連結となるようにするために必要な線分の長さの和を最小化せよ。用いる線分の端点は必ずしも与えられた点である必要はない。
+    \end{quote}
+    現在ではこの問題は Euclidean Steiner tree problem あるいは Geometric Steiner problem と呼ばれている。
+    最適な線分の組は互いに交わらずかつ閉路を作らないため、それらの端点を頂点とした木だとみなせる。これを Steiner minimum tree と呼ぶ。またこの木の頂点であって、与えられた $n$ 点のいずれとも異なるものは Steiner points (シュタイナー点) と呼ばれる。
+
+    例として $n=3$ の場合の Euclidean Steiner tree problem について見てみる。
+
+    \begin{figure}[ht]
+        \centering
+        \begin{tikzpicture}
+            \node[anchor=south] at (0,0) {S};
+            \fill (0,0) circle [radius=2pt];
+
+            \node[anchor=south east] at (-0.866,0.5) {A};
+            \fill (-0.866,0.5) circle [radius=2pt];
+
+            \node[anchor=west] at (1.732,1) {B};
+            \fill (1.732,1) circle [radius=2pt];
+
+            \node[anchor=north] at (0,-1.5) {C};
+            \fill (0,-1.5) circle [radius=2pt];
+
+            \draw[thick] (0,0)--(0,-1.5);
+            \draw[thick] (0,0)--(1.732,1);
+            \draw[thick] (0,0)--(-0.866,0.5);
+        \end{tikzpicture}
+        \caption{Steiner minimum tree in case of $n=3$.}
+    \end{figure}
+    Figure 1 において A, B, C が与えられた3点であり、S は Steiner point である。
+    ここで3本の線分 SA, SB, SC が互いになす角は $120^\circ$ となっている。
+    このように $n=3$ の場合、Steiner minimum tree は与えられた3点が作る三角形の Fermat 点と各頂点を結ぶ3つの線分からなることが知られている。
+
+    このコンテクストでの Steiner minimum tree に関する現在未解決
+    % \footnote{調べた限り本当に未解決かはっきりとは分からなかったのだが。}
+    の予想として次のものが知られている。
+
+    \begin{quote}
+        {\bf Conjecture(Gilbert \& Pollack, 1968)}\\
+        Euclid 平面上の2つ以上の異なる点からなる集合 $P$ に対し、\\
+        \hspace{15pt} $L_{SMT}(P)$ : Steiner minimum tree の合計の長さ \\
+        \hspace{15pt} $L_{MST}(P)$ : $P$ を頂点集合とする Minimum spanning tree の合計の長さ\\
+        とする。このとき次の等式が成り立つ。
+        \begin{eqnarray*}
+            \inf\left\{\cfrac{L_{SMT}(P)}{L_{MST}(P)}\ \middle|\ P \right\}=\cfrac{\sqrt{3}}{2} \\
+        \end{eqnarray*}
+    \end{quote}
+    既に $n$ を小さい値に限定した主張については証明されており、一般の場合についても証明できたという旨の論文\cite{rat}が1992年に出されたが、2012年には彼らの議論に gap があることを主張する論文\cite{rat2}が出版されている。
+
+    また類似した別の version として、Euclid 距離を Manhattan 距離で置き換えたものも知られており、こちらは Rectilinear Steiner tree と呼ばれる。さらに次元や距離関数を一般化した問題についても研究されている。\\
+
+    1.1で述べた version を一般化した問題として、重み付きグラフについての以下のものも知られている。
+
+    \begin{quote}
+        INSTANCE:
+        \begin{quote}
+            \begin{itemize}
+                \item weighted な無向グラフ $G$ とそのコスト関数 $c: E\rightarrow \mathbb{R_+}$
+                \item 頂点の部分集合 $S\subseteq V$
+                \item 正の実数 $k\in\mathbb{R_+}$
+            \end{itemize}
+        \end{quote}
+
+        QUESTION:
+        \begin{quote}
+            $G$ の部分木 $T\subseteq G$ であって次の2つを満たすものが存在するか判定せよ。
+            \begin{itemize}
+                \item $S\subseteq V(T)$
+                \item $\displaystyle \sum_{e\in E(T)} c(e)\le k$
+            \end{itemize}
+        \end{quote}
+    \end{quote}
+    コスト関数 $c$ が定数関数であればこれは 1.1 で述べたものと等価であるため、確かに一般化になっている。
+
+    \subsection{Applications}
+    有名な実用例としてはネットワークの通信経路策定やVSLI回路の配線設計などが挙げられる。前者は weighted graph に関する version の適用例であり、後者は Euclidean plane に関する version の適用例である。
+
+    \section{Complexity analysis}
+    Steiner tree problem は Richard Karp's 21 NP-complete problems\cite{karp} の1つであり、前章で紹介したいずれの version も NP 完全な問題であることが知られている\cite{np}。
+    この事実は非常に興味深いものであるが、本章では最初に述べた unweighted graph についての問題のみ、その NP-completeness を示すことにする\footnote{Steiner tree problem のどの version についてもその NP 完全性を示している文献はあまり見当たらなかった。}。
+
+    Steiner tree problem がクラス NP に属することは明らかであるから、NP-hard であることを示せばよい。
+    \cite{prf}で述べられている Exact Cover by 3-Sets (NP 完全問題の1つ)からの reduction による証明にヒントを得て、
+    本レポートでは NP 完全問題として有名な Vertex cover problem からの多項式時間還元による証明を試みる。
+
+    \subsection{Vertex cover problem(VC)}
+    Vertex cover problem (頂点被覆問題)とは判定問題として次のように定式化されるものである。
+    \begin{quote}
+        INSTANCE:
+        \begin{quote}
+            \begin{itemize}
+                \item 無向グラフ $G$
+                \item 正の整数 $k$
+            \end{itemize}
+        \end{quote}
+
+        QUESTION:
+        \begin{quote}
+            $G$ の 部分グラフ $H\subseteq G$ であって次の2つを満たすものが存在するか判定せよ。
+            \begin{itemize}
+                \item $E(H) = E(G)$
+                \item $|V(H)|\le k$
+            \end{itemize}
+        \end{quote}
+    \end{quote}
+    QUESTION の1つ目の条件を満たす部分グラフ $H$ (あるいはその頂点集合 $V(H)$)を $G$ の Vertex cover (頂点被覆)という。
+    Steiner tree problem と同様に Minimum vertex cover を求める最適化問題としてもよく知られ、やはり Richard Karp's 21 NP-complete problems\cite{karp} の1つでもある。
+
+    \subsection{Polynomial time reduction from VC}
+    今 Vertex cover problem $X$ の instance として無向グラフ $G$ と正の整数 $k$ が与えられているとする。
+    それに対し新たに無向グラフ $G'$ を次のように定める\footnote{定義から分かるように $G$ における辺も $G'$ では頂点として扱っている。
+    また頂点 $\alpha$ は $G$ の辺に対応する頂点同士が $G'$ において互いに連結になるために便宜上加えたものである。}。
+
+    \begin{itemize}
+        \item $V(G')=\{\alpha\}\cup V(G)\cup E(G)$
+        \item $E(G')=\left\{\{\alpha, v\} | v\in V(G)\right\}\cup \{\{e,v\} | e\in E(G) \land v\in e \}$
+    \end{itemize}
+    また $G'$ に加えて頂点集合 $S'$ および正の整数 $k'$ を
+    \begin{eqnarray*}
+        S'&=&\{\alpha\}\cup E(G)=V(G')\setminus V(G)\\
+        k'&=&k+|E(G)|
+    \end{eqnarray*}
+    と定め、この $(G',S',k')$ を instance とする Steiner tree problem $Y$ と変換 $f: X\mapsto Y$ を考える。
+    この変換 $f$ が所望の還元になっていることを以下の3ステップで示す。
+
+    \begin{enumerate}
+        \item $f$ is executable in polynomial time.
+        \item X is True $\Rightarrow$ f(X) is also True.
+        \item f(X) is True $\Rightarrow$ X is also True. \\
+    \end{enumerate}
+
+    \subsubsection*{Step 1}
+    $G$ は単純グラフなので $|E(G)|\in O(|V(G)|^2)$ であり、ゆえに $|V(G')|,|E(G')|$ についても $|V(G)|$ の多項式オーダーである。よって変換 $f$ は多項式時間で実現可能であることが分かる。
+
+    \subsubsection*{Step 2}
+    あるサイズ $k$ 以下の Vertex cover $W\subseteq V(G)$ ($X$ の解の1つ)が存在したとする。
+    定義より各 $e\in E(G)$ について $e\cap W \neq \emptyset$ だから、その内のある元を対応させる写像 $h:E(G)\rightarrow W$ がとれる。
+    このとき $S'$ を張る Steiner tree $T'$ であって頂点数が $k'$ 以下のもの($Y$ の解の1つ)が次のように構成できる。
+    \begin{itemize}
+        \item $V(T')=\{\alpha\}\cup W \cup E(G) \subseteq V(G')$
+        \item $E(T')=\{\{\alpha,v\}|v\in W\}\cup \{\{e,h(e)\}|e\in E(G)\} \subseteq E(G')$
+    \end{itemize}
+    実際にこれは $S'$ を張る $G'$ の部分木であり、また $|E(T')|\le |W|+|E(G)|\le k+|E(G)|=k'$ が成り立っている。
+
+    \subsubsection*{Step 3}
+    ある辺数 $k'$ 以下の Steiner tree $T'\subseteq G'$ が存在したとする。
+    $G'$ の定義より、各 $T'$ の頂点\footnote{とみなした $G$ の各辺} $e\in E(G) \subseteq V(T')$ に対し、ある $v\in V(T')\cap V(G)$ が存在して $\{e,v\}\in E(T')\subseteq E(G')$、つまり $v\in e$ となる\footnote{そもそも $e$ は $V(G)$ の2元集合であった。$v \in e$ とはグラフ $G$ において頂点 $v$ が辺 $e$ の端点であることを意味する。}。
+    グラフ $G$ に立ち返って考えると、これは $V(T')\cap V(G)$ が $G$ の Vertex coverであることに他ならない。
+    さらに $|V(T')|=|E(T')|+1\le k'+1=k+|S'| $ かつ $S'\subseteq V(T')$ なので、$|V(T')\cap V(G)|=|V(T')\setminus S'|=|V(T')|-|S'|\le k$ も成り立つ。
+
+    \subsubsection*{Conclusion}
+    以上の議論から変換 $f$ が VC から Steiner tree problem への多項式時間還元になっていることが示され、Steiner tree problem が NP-complete であることの証明が完結した。
+
+    \subsection{Parameterized complexity}
+    Weighted graph についての Steiner tree problem を解く手法の1つとして定番のものが Dreyfus-Wagner 法\cite{DW}である。このアルゴリズムは後で示すように $O(3^{|S|}|V|+2^{|S|}|V|^2)$ 時間で動作するため、Steiner tree problem は FPT(fixed-parameter tractable) な問題としても知られる。
+
+    \section{Solutions for the problem}
+    \subsection{Exact solution}
+    前章の最後に触れた Dreyfus-Wagner 法\cite{DW}は Dinamic programming (動的計画法)による解法であり、その概要は以下に示した疑似コード
+    \footnote{本レポートに記載している疑似コードにおいて、ループや条件分岐のスコープは python 等の言語と同様にインデントに従って決まるものとする。}
+    の通りである。
+
+    \begin{algorithm}
+        \caption{A pseudocode of the Dreyfus-Wagner algorithm}
+        \begin{algorithmic}[1]
+            \Require
+            \Statex $G$ : a simple and undirected graph.
+            \Statex $S$ : a subset of the vertices in $G$.
+
+            \Ensure
+            \Statex Return value is the number of edges in Steiner minimum tree, and it would be $\infty$ if impossible to construct.
+            \Statex
+
+            \Function{Find-SMT}{$G$, $S$}
+            \For{$R\subseteq S\ and\ v \in S $} \Comment{initialize the DP table.}
+                \State $dp[S,v] \gets 0$
+            \EndFor
+            \For{$R\subseteq S\ and\ v \in V\setminus S $}
+                \State $d[S,v] \gets \infty$
+            \EndFor
+            \Statex
+
+            \For{$R\subseteq S$} \Comment{smaller $R$ must come earlier.}
+                \For{$v \in V$}
+                    \For{$X \subseteq R$}
+                        \State $dp[R,v] \gets \min\{dp[R,v], dp[X, v]+dp[R\setminus X, v]\}$
+                    \EndFor
+                \EndFor
+                \Statex
+
+                \For{$|V|-|R|$ times} \Comment{like Bellman-Ford algorithm.}
+                    \For{$\{u,v\} \in E$}
+                        \State $dp[R,v] \gets \min\{dp[R,v],dp[R,u]+1\}$
+                        \State $dp[R,u] \gets \min\{dp[R,u],dp[R,v]+1\}$
+                    \EndFor
+                \EndFor
+            \EndFor
+            \Statex
+
+            \State take $\forall s\in S$.
+            \State \Return $dp[S,s]$
+            \EndFunction
+        \end{algorithmic}
+    \end{algorithm}
+    各 $R \subseteq S$ と $v\in V$ について $dp[R,v]=$ (頂点集合$R\cup \{v\}$ を張る Steiner minimum tree の辺数) となるように $|R|$ の小さい方から順に更新していく\footnote{前ページの疑似コードに示された DP テーブルの更新が正しく動作することの詳細な説明は\cite{DW}に譲るが、$v$ と $R$ のつながり方で場合分けすると納得しやすい。}。
+    このとき求めたいのはある $s\in S$ に対する $dp[S,s]$ の値($s$ の取り方に依らない)である。
+    またループの回数の合計をカウントすることにより、計算量が $O(3^{|S|}|V|+2^{|S|}|V|^2)$ に収まることが分かる。
+    C 言語による実装では $|S| = 15, |V| = 20$ 程度の INSTANCE で実行に約 1 sec かかることから、現実的にはせいぜい $|S|$ が2桁以下の Case にしか適用できないだろう。
+
+
+    \subsection{Approximate solution}
+    次に近似アルゴリズムとして最も広く使用されている KMB 法\cite{KMB}を紹介する。この方法では以下の3ステップで近似解を得る。
+    \begin{enumerate}
+        \item All pairs shortest path を the Floyd-Warshall algorithm により求める。
+        \item 頂点集合 $R$ の重み付き完全グラフ $K$ であって、各辺$\{u,v\}$ の重みが $u-v$ 間の shortest path の長さに等しいものを考える。
+        \item $K$ の Minimum spanning tree を Prim's algorithm などを用いて求める。
+    \end{enumerate}
+    いずれのステップも頂点数 $|V|$ の多項式時間で実行でき、全体の計算量は $O(|V|^3)$ となる。
+    明らかに厳密解よりも真に小さい解が得られることはない。
+    また疎グラフについてはほぼ正確な結果が得ることができる。
+    実際に頂点数が 20 程度のランダムに生成したグラフでは、いずれも 3.1 で実装したものと同じ結果を得ることができた。
+    次のページに上のステップを辿って実装した疑似コードを載せて本レポートを締めたいと思う。
+
+    \begin{quote}
+        \begin{algorithm}[]
+            \centering
+            \caption{An example of appoloximate solutions}
+            \begin{algorithmic}[1]
+                \Require
+                \Statex $G$ : a simple and undirected graph.
+                \Statex $S$ : a subset of the vertices in $G$.
+
+                \Ensure
+                \Statex Return value is the number of edges in \emph{approximate} Steiner minimum tree, and it would be $\infty$ if impossible to construct.
+                \Statex
+
+                \Function{Find-Approx-SMT}{$G$, $S$}
+
+                \For{$u \in V$} \Comment{initialize the pairwise distance table.}
+                    \State $d[u,u] \gets 0$
+                    \For{$v\in V\setminus \{u\}$}
+                        \If{$\{u,v\}\in E$}
+                            \State $d[u,v] \gets 1$
+                        \Else
+                            \State $d[u,v] \gets \infty$
+                        \EndIf
+                    \EndFor
+                \EndFor
+                \Statex
+
+                \For{$i \in V$} \Comment{the Floyd-Warshall algorithm.}
+                    \For{$u \in V$}
+                        \For{$v\in V$}
+                            \State $d[u,v] \gets \min\{d[u,v], d[u,i]+d[i,v]\}$
+                        \EndFor
+                    \EndFor
+                \EndFor
+                \Statex
+
+                \State take $\forall t\in S$. \Comment{Prim's algorithm on $K$.}
+                \For{$s\in S$}
+                    $cut[s] \gets \infty$
+                \EndFor
+                \State $T \gets \emptyset,\ cost \gets 0,\ mincut \gets 0$
+
+                \Loop
+                    \State $T \gets T\cup\{t\},\ cost \gets cost+mincut$
+                    \If{$T=S$}
+                        \State \Return $cost$
+                    \EndIf
+                    \State $mincut\gets \infty$
+                    \For{$s \in S\setminus T$}
+                        \State $cut[s] \gets \min\{cut[s],d[s,t]\}$
+                        \If{$cut[s]<mincut$}
+                            \State $mincut\gets cut[s],\ t \gets s$
+                        \EndIf
+                    \EndFor
+                \EndLoop
+                \EndFunction
+            \end{algorithmic}
+        \end{algorithm}
+    \end{quote}
+
+\newpage
+    \begin{thebibliography}{10}
+        \bibitem{rat} Du, D. Z., \& Hwang, F. K. (1992). A proof of the Gilbert-Pollak conjecture on the Steiner ratio. \emph{Algorithmica, 7}(1-6), 121-135.
+        \bibitem{rat2} Ivanov, A. O., \& Tuzhilin, A. A. (2012). The steiner ratio gilbert–pollak conjecture is still open. \emph{Algorithmica, 62}(1-2), 630-632.
+        \bibitem{karp} Karp, R. M. (1972). Reducibility among combinatorial problems. In Complexity of computer computations (pp. 85-103). \emph{Springer, Boston, MA.}
+        \bibitem{np} Garey, M. R., \& Johnson, D. S. (1979). \emph{Computers and intractability (Vol. 174). San Francisco: freeman}.
+        \bibitem{prf} Santuari, A. (2003). Steiner tree NP-completeness proof. \emph{Technical report, University of Trento}.
+        \bibitem{DW} Dreyfus, S. E., \& Wagner, R. A. (1971). The Steiner problem in graphs. \emph{Networks, 1}(3), 195-207.
+        \bibitem{KMB} Kou, L., Markowsky, G., \& Berman, L. (1981). A fast algorithm for Steiner trees. \emph{Acta informatica, 15}(2), 141-145.
+        % \bibitem{adv} Du, D. Z., Smith, J. M., \& Rubinstein, J. H. (Eds.). (2013). Advances in Steiner trees (Vol. 6). \emph{Springer Science \& Business Media}.
+        % \bibitem{ind} Cheng, X., \& Du, D. Z. (Eds.). (2013). Steiner trees in industry (Vol. 11). \emph{Springer Science \& Business Media.}
+    \end{thebibliography}
+
+\end{document}
